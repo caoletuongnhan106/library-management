@@ -1,58 +1,62 @@
-import { SubmitHandler, UseFormReturn } from "react-hook-form";
-import { TextField, Box, Button } from "@mui/material";
+import { UseFormReturn } from "react-hook-form";
+import { Button, Box } from "@mui/material";
 import { Book } from "../api/mockApi";
+import { BookFormData } from "../types/formTypes";
+import TextInputField from "./TextInputField";
 
 type BookFormProps = {
-  onSubmit: SubmitHandler<Book>;
-  formMethods: UseFormReturn<Book, any, Book>; 
+  onSubmit: (data: BookFormData) => void;
+  formMethods: UseFormReturn<BookFormData>;
   editingBook: Book | null;
 };
 
 const BookForm: React.FC<BookFormProps> = ({ onSubmit, formMethods, editingBook }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = formMethods;
+  const { handleSubmit } = formMethods;
 
   return (
-    <Box display="flex" gap="10px" style={{ marginBottom: "20px" }}>
-      <TextField
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onSubmit)}
+      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+    >
+      <TextInputField<BookFormData>
+        name="title"
+        control={formMethods.control}
         label="Title"
-        {...register("title", { required: true })}
-        fullWidth
-        error={!!errors.title}
-        helperText={errors.title ? "Title is required" : ""}
       />
-      <TextField
+      <TextInputField<BookFormData>
+        name="author"
+        control={formMethods.control}
         label="Author"
-        {...register("author", { required: true })}
-        fullWidth
-        error={!!errors.author}
-        helperText={errors.author ? "Author is required" : ""}
       />
-      <TextField
+      <TextInputField<BookFormData>
+        name="year"
+        control={formMethods.control}
         label="Year"
         type="number"
-        {...register("year", { required: true, valueAsNumber: true })}
-        fullWidth
-        error={!!errors.year}
-        helperText={errors.year ? "Year is required" : ""}
+        onCustomChange={(value) => parseInt(value, 10)}
       />
-      <TextField
+      <TextInputField<BookFormData>
+        name="genre"
+        control={formMethods.control}
         label="Genre"
-        {...register("genre", { required: true })}
-        fullWidth
-        error={!!errors.genre}
-        helperText={errors.genre ? "Genre is required" : ""}
       />
-      <Button
-        type="submit"
-        variant="contained"
-        onClick={handleSubmit(onSubmit)}
-      >
-        {editingBook ? "Update Book" : "Add Book"}
-      </Button>
+      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{ flex: 1, py: 1.2 }}
+        >
+          {editingBook ? "Update" : "Add"}
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => formMethods.reset()}
+          sx={{ flex: 1, py: 1.2 }}
+        >
+          Reset
+        </Button>
+      </Box>
     </Box>
   );
 };

@@ -1,50 +1,59 @@
-import { SubmitHandler, UseFormReturn } from "react-hook-form";
-import { TextField, Box, Button } from "@mui/material";
+import { UseFormReturn } from "react-hook-form";
+import { Button, Box } from "@mui/material";
 import { Reader } from "../api/mockApi";
+import { ReaderFormData } from "../types/formTypes";
+import TextInputField from "./TextInputField";
 
 type ReaderFormProps = {
-  onSubmit: SubmitHandler<Reader>;
-  formMethods: UseFormReturn<Reader, any, Reader>;
+  onSubmit: (data: ReaderFormData) => void;
+  formMethods: UseFormReturn<ReaderFormData>;
   editingReader: Reader | null;
 };
 
-const ReaderForm: React.FC<ReaderFormProps> = ({ onSubmit, formMethods, editingReader }) => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = formMethods;
+const ReaderForm: React.FC<ReaderFormProps> = ({
+  onSubmit,
+  formMethods,
+  editingReader,
+}) => {
+  const { handleSubmit } = formMethods;
 
   return (
-    <Box display="flex" gap="10px" style={{ marginBottom: "20px" }}>
-      <TextField
+    <Box
+      component="form"
+      onSubmit={handleSubmit(onSubmit)}
+      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+    >
+      <TextInputField<ReaderFormData>
+        name="name"
+        control={formMethods.control}
         label="Name"
-        {...register("name", { required: true })}
-        fullWidth
-        error={!!errors.name}
-        helperText={errors.name ? "Name is required" : ""}
       />
-      <TextField
+      <TextInputField<ReaderFormData>
+        name="email"
+        control={formMethods.control}
         label="Email"
-        {...register("email", { required: true })}
-        fullWidth
-        error={!!errors.email}
-        helperText={errors.email ? "Email is required" : ""}
       />
-      <TextField
+      <TextInputField<ReaderFormData>
+        name="phone"
+        control={formMethods.control}
         label="Phone"
-        {...register("phone", { required: true })}
-        fullWidth
-        error={!!errors.phone}
-        helperText={errors.phone ? "Phone is required" : ""}
       />
-      <Button
-        type="submit"
-        variant="contained"
-        onClick={handleSubmit(onSubmit)}
-      >
-        {editingReader ? "Update Reader" : "Add Reader"}
-      </Button>
+      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+        <Button
+          type="submit"
+          variant="contained"
+          sx={{ flex: 1, py: 1.2 }}
+        >
+          {editingReader ? "Update" : "Add"}
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => formMethods.reset()}
+          sx={{ flex: 1, py: 1.2 }}
+        >
+          Reset
+        </Button>
+      </Box>
     </Box>
   );
 };

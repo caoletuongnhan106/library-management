@@ -1,26 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
 import { getReaders, addReader, updateReader, deleteReader } from "../api/mockApi";
 import ReaderForm from "../components/ReaderForm";
-import {
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-} from "@mui/material";
+import { Button, Typography, Paper } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { Reader } from "../api/mockApi";
-import AddIcon from "@mui/icons-material/Add";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { readerSchema } from "../validation/readerSchema";
+import { ReaderFormData } from "../types/formTypes";
+import CustomDialog from "../components/CustomDialog";
+import CustomTable from "../components/CustomTable";
 
 const ReaderManagement: React.FC = () => {
   const queryClient = useQueryClient();
@@ -41,7 +31,7 @@ const ReaderManagement: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, reader }: { id: number; reader: Omit<Reader, "id"> }) =>
+    mutationFn: ({ id, reader }: { id: number; reader: ReaderFormData }) =>
       updateReader(id, reader),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["readers"] });
@@ -55,21 +45,20 @@ const ReaderManagement: React.FC = () => {
     },
   });
 
-  const formMethods = useForm<Reader>({
-    defaultValues: editingReader || {
-      id: 0,
-      name: "",
-      email: "",
-      phone: "",
-    },
+  const formMethods = useForm<ReaderFormData>({
+    defaultValues: editingReader
+      ? { name: editingReader.name, email: editingReader.email, phone: editingReader.phone }
+      : { name: "", email: "", phone: "" },
+    resolver: yupResolver(readerSchema),
   });
 
-  const handleAddOrUpdate = async (data: Reader) => {
+  const handleAddOrUpdate = async (data: ReaderFormData) => {
     if (editingReader) {
       await updateMutation.mutateAsync({ id: editingReader.id, reader: data });
       setEditingReader(null);
     } else {
-      await addMutation.mutateAsync(data);
+      const newReader: Reader = { ...data, id: Date.now() };
+      await addMutation.mutateAsync(newReader);
     }
     formMethods.reset();
     setOpenDialog(false);
@@ -77,7 +66,11 @@ const ReaderManagement: React.FC = () => {
 
   const handleEdit = (reader: Reader) => {
     setEditingReader(reader);
-    formMethods.reset(reader);
+    formMethods.reset({
+      name: reader.name,
+      email: reader.email,
+      phone: reader.phone,
+    });
     setOpenDialog(true);
   };
 
@@ -97,72 +90,64 @@ const ReaderManagement: React.FC = () => {
     setOpenDialog(false);
   };
 
+  const columns = [
+    { label: "Name", key: "name" },
+    { label: "Email", key: "email" },
+    { label: "Phone", key: "phone" },
+    ...(user?.role === "admin"
+      ? [
+          {
+            label: "Actions",
+            key: "actions",
+            render: (row: Reader) => (
+              <>
+                <Button
+                  variant="outlined"
+                  onClick={() => handleEdit(row)}
+                  sx={{ mr: 1 }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => handleDelete(row.id)}
+                >
+                  Delete
+                </Button>
+              </>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <Paper sx={{ padding: "20px", margin: "20px auto", maxWidth: "1200px" }}>
+    <Paper sx={{ mt: 4, p: 3 }}>
       <Typography variant="h5" gutterBottom>
         Reader Management
       </Typography>
       {user?.role === "admin" && (
         <Button
           variant="contained"
-          startIcon={<AddIcon />}
           onClick={handleOpenDialog}
-          sx={{ marginBottom: "20px", bgcolor: "primary.main" }}
+          sx={{ mb: 3, py: 1.2, px: 3 }}
         >
           Add Reader
         </Button>
       )}
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle sx={{ bgcolor: "primary.main", color: "white" }}>
-          {editingReader ? "Edit Reader" : "Add Reader"}
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          <ReaderForm
-            onSubmit={handleAddOrUpdate}
-            formMethods={formMethods}
-            editingReader={editingReader}
-          />
-        </DialogContent>
-      </Dialog>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Email</TableCell>
-            <TableCell>Phone</TableCell>
-            {user?.role === "admin" && <TableCell>Actions</TableCell>}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {readers.map((reader) => (
-            <TableRow key={reader.id}>
-              <TableCell>{reader.name}</TableCell>
-              <TableCell>{reader.email}</TableCell>
-              <TableCell>{reader.phone}</TableCell>
-              {user?.role === "admin" && (
-                <TableBody>
-                  <Button
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                    onClick={() => handleEdit(reader)}
-                    sx={{ mr: 1, color: "primary.main", borderColor: "primary.main" }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<DeleteIcon />}
-                    color="error"
-                    onClick={() => handleDelete(reader.id)}
-                  >
-                    Delete
-                  </Button>
-                </TableBody>
-              )}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <CustomDialog
+        open={openDialog}
+        onClose={handleCloseDialog}
+        title={editingReader ? "Edit Reader" : "Add Reader"}
+      >
+        <ReaderForm
+          onSubmit={handleAddOrUpdate}
+          formMethods={formMethods}
+          editingReader={editingReader}
+        />
+      </CustomDialog>
+      <CustomTable columns={columns} data={readers} />
     </Paper>
   );
 };
