@@ -22,7 +22,7 @@ type CustomTableProps<T> = {
   data: T[];
 };
 
-const CustomTable = <T,>({ columns, data }: CustomTableProps<T>) => {
+const CustomTable = <T,>({ columns, data = [] }: CustomTableProps<T>) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
@@ -48,15 +48,23 @@ const CustomTable = <T,>({ columns, data }: CustomTableProps<T>) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {paginatedData.map((row, index) => (
-            <TableRow key={index}>
-              {columns.map((column) => (
-                <TableCell key={String(column.key)}>
-                  {column.render ? column.render(row) : (row[column.key as keyof T] as ReactNode)}
-                </TableCell>
-              ))}
+          {paginatedData.length > 0 ? (
+            paginatedData.map((row, index) => (
+              <TableRow key={index}>
+                {columns.map((column) => (
+                  <TableCell key={String(column.key)}>
+                    {column.render ? column.render(row) : (row[column.key as keyof T] as ReactNode)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} align="center">
+                No data available
+              </TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
       <TablePagination
