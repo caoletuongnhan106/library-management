@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getBooks, addBook, updateBook, deleteBook, getStatistics } from "../api/mockApi";
 import BookForm from "../components/BookForm";
-import { Button, Typography, Paper, Chip } from "@mui/material";
+import { Button, Typography, Paper, Chip, CircularProgress, Box } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { Book } from "../api/mockApi";
 import { bookSchema } from "../validation/bookSchema";
@@ -18,7 +18,7 @@ const BookManagement: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const { user } = useAuth();
 
-  const { data: books = [] } = useQuery<Book[]>({
+  const { data: books = [], isLoading } = useQuery<Book[]>({
     queryKey: ["books"],
     queryFn: getBooks,
   });
@@ -166,7 +166,13 @@ const BookManagement: React.FC = () => {
           editingBook={editingBook}
         />
       </CustomDialog>
-      <CustomTable columns={columns} data={books} />
+      {isLoading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <CustomTable columns={columns} data={books} />
+      )}
     </Paper>
   );
 };
