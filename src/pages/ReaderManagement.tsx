@@ -9,16 +9,16 @@ import { useAuth } from "../context/AuthContext";
 import { Reader } from "../api/mockApi";
 import { readerSchema } from "../validation/readerSchema";
 import { ReaderFormData } from "../types/formTypes";
-import CustomDialog from "../components/CustomDialog";
 import CustomTable from "../components/CustomTable";
 import { useDialog } from "../hooks/useDialog";
+import RoleBasedRender from "../components/RoleBasedRender";
 
 const ReaderManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [editingReader, setEditingReader] = useState<Reader | null>(null);
   const { user } = useAuth();
 
-  const { data: readers = [], isLoading } = useQuery<Reader[]>({
+  const { data: readers = [], isLoading: isReadersLoading } = useQuery<Reader[]>({
     queryKey: ["readers"],
     queryFn: getReaders,
   });
@@ -39,7 +39,7 @@ const ReaderManagement: React.FC = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteReader,
+    mutationFn: (id: number) => deleteReader(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["readers"] });
     },
@@ -50,19 +50,8 @@ const ReaderManagement: React.FC = () => {
     resolver: yupResolver(readerSchema),
   });
 
-  const { isOpen, openDialog, closeDialog } = useDialog({
-    onOpen: () => {
-      setEditingReader(null);
-      formMethods.reset({ name: "", email: "", phone: "" });
-    },
-    onClose: () => {
-      setEditingReader(null);
-      formMethods.reset({ name: "", email: "", phone: "" });
-    },
-  });
-
   const handleAddOrUpdate = useCallback(
-    async (data: ReaderFormData) => {
+    async (data: ReaderFormData, closeDialog: () => void) => {
       if (editingReader) {
         await updateMutation.mutateAsync({ id: editingReader.id, reader: data });
         setEditingReader(null);
@@ -72,8 +61,27 @@ const ReaderManagement: React.FC = () => {
       }
       closeDialog();
     },
-    [editingReader, updateMutation, addMutation, closeDialog]
+    [editingReader, updateMutation, addMutation]
   );
+
+  const { openDialog, closeDialog, content } = useDialog({
+    onOpen: () => {
+      setEditingReader(null);
+      formMethods.reset({ name: "", email: "", phone: "" });
+    },
+    onClose: () => {
+      setEditingReader(null);
+      formMethods.reset({ name: "", email: "", phone: "" });
+    },
+    title: editingReader ? "Edit Reader" : "Add Reader",
+    children: (
+      <ReaderForm
+        onSubmit={(data) => handleAddOrUpdate(data, closeDialog)}
+        formMethods={formMethods}
+        editingReader={editingReader}
+      />
+    ),
+  });
 
   const handleEdit = useCallback(
     (reader: Reader) => {
@@ -132,7 +140,7 @@ const ReaderManagement: React.FC = () => {
       <Typography variant="h5" gutterBottom>
         Reader Management
       </Typography>
-      {user?.role === "admin" && (
+      <RoleBasedRender role={user?.role}>
         <Button
           variant="contained"
           onClick={openDialog}
@@ -140,19 +148,9 @@ const ReaderManagement: React.FC = () => {
         >
           Add Reader
         </Button>
-      )}
-      <CustomDialog
-        open={isOpen}
-        onClose={closeDialog}
-        title={editingReader ? "Edit Reader" : "Add Reader"}
-      >
-        <ReaderForm
-          onSubmit={handleAddOrUpdate}
-          formMethods={formMethods}
-          editingReader={editingReader}
-        />
-      </CustomDialog>
-      <CustomTable columns={columns} data={readers} isLoading={isLoading} />
+      </RoleBasedRender>
+      {content}
+      <CustomTable columns={columns} data={readers} isLoading={isReadersLoading} />
     </Paper>
   );
 };

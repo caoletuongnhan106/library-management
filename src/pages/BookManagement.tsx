@@ -9,21 +9,27 @@ import { useAuth } from "../context/AuthContext";
 import { Book } from "../api/mockApi";
 import { bookSchema } from "../validation/bookSchema";
 import { BookFormData } from "../types/formTypes";
-import CustomDialog from "../components/CustomDialog";
 import CustomTable from "../components/CustomTable";
 import { useDialog } from "../hooks/useDialog";
+import RoleBasedRender from "../components/RoleBasedRender";
+
+interface Statistics {
+  totalBooks: number;
+  topAuthor: string;
+  topYear: number;
+}
 
 const BookManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { user } = useAuth();
 
-  const { data: books = [], isLoading } = useQuery<Book[]>({
+  const { data: books = [], isLoading: isBooksLoading } = useQuery<Book[]>({
     queryKey: ["books"],
     queryFn: getBooks,
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<Statistics>({
     queryKey: ["statistics"],
     queryFn: getStatistics,
   });
@@ -58,19 +64,8 @@ const BookManagement: React.FC = () => {
     resolver: yupResolver(bookSchema),
   });
 
-  const { isOpen, openDialog, closeDialog } = useDialog({
-    onOpen: () => {
-      setEditingBook(null);
-      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
-    },
-    onClose: () => {
-      setEditingBook(null);
-      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
-    },
-  });
-
   const handleAddOrUpdate = useCallback(
-    async (data: BookFormData) => {
+    async (data: BookFormData, closeDialog: () => void) => {
       if (editingBook) {
         await updateMutation.mutateAsync({ id: editingBook.id, book: data });
         setEditingBook(null);
@@ -80,8 +75,27 @@ const BookManagement: React.FC = () => {
       }
       closeDialog();
     },
-    [editingBook, updateMutation, addMutation, closeDialog]
+    [editingBook, updateMutation, addMutation]
   );
+
+  const { openDialog, closeDialog, content } = useDialog({
+    onOpen: () => {
+      setEditingBook(null);
+      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
+    },
+    onClose: () => {
+      setEditingBook(null);
+      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
+    },
+    title: editingBook ? "Edit Book" : "Add Book",
+    children: (
+      <BookForm
+        onSubmit={(data) => handleAddOrUpdate(data, closeDialog)}
+        formMethods={formMethods}
+        editingBook={editingBook}
+      />
+    ),
+  });
 
   const handleEdit = useCallback(
     (book: Book) => {
@@ -151,7 +165,7 @@ const BookManagement: React.FC = () => {
           Statistics: {stats.totalBooks} books | Top Author: {stats.topAuthor} | Top Year: {stats.topYear}
         </Typography>
       )}
-      {user?.role === "admin" && (
+      <RoleBasedRender role={user?.role}>
         <Button
           variant="contained"
           onClick={openDialog}
@@ -159,19 +173,9 @@ const BookManagement: React.FC = () => {
         >
           Add Book
         </Button>
-      )}
-      <CustomDialog
-        open={isOpen}
-        onClose={closeDialog}
-        title={editingBook ? "Edit Book" : "Add Book"}
-      >
-        <BookForm
-          onSubmit={handleAddOrUpdate}
-          formMethods={formMethods}
-          editingBook={editingBook}
-        />
-      </CustomDialog>
-      <CustomTable columns={columns} data={books} isLoading={isLoading} />
+      </RoleBasedRender>
+      {content}
+      <CustomTable columns={columns} data={books} isLoading={isBooksLoading} />
     </Paper>
   );
 };

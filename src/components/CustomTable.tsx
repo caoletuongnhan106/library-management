@@ -42,13 +42,13 @@ const CustomTable = <T,>({ columns, data = [], isLoading = false }: CustomTableP
   );
 
   const paginatedData = useMemo(
-    () => (data?.length ? data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) : []),
+    () => data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
     [data, page, rowsPerPage]
   );
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: 200 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", p: 3 }}>
         <CircularProgress />
       </Box>
     );
@@ -79,7 +79,7 @@ const CustomTable = <T,>({ columns, data = [], isLoading = false }: CustomTableP
       <TablePagination
         rowsPerPageOptions={[5, 10, 25]}
         component="div"
-        count={data?.length || 0}
+        count={data.length}
         rowsPerPage={rowsPerPage}
         page={page}
         onPageChange={handleChangePage}
