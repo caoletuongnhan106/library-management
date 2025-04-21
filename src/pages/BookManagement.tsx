@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useCallback, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useMemo } from "react";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getBooks, addBook, updateBook, deleteBook, getStatistics } from "../api/mockApi";
 import BookForm from "../components/BookForm";
@@ -21,7 +21,6 @@ interface Statistics {
 
 const BookManagement: React.FC = () => {
   const queryClient = useQueryClient();
-  const [editingBook, setEditingBook] = useState<Book | null>(null);
   const { user } = useAuth();
 
   const { data: books = [], isLoading: isBooksLoading } = useQuery<Book[]>({
@@ -59,48 +58,46 @@ const BookManagement: React.FC = () => {
     },
   });
 
-  const formMethods = useForm<BookFormData>({
-    defaultValues: { title: "", author: "", year: 0, genre: "" },
+  const formMethods: UseFormReturn<BookFormData> = useForm<BookFormData>({
+    defaultValues: { title: "", author: "", year: 0, genre: "", id: undefined },
     resolver: yupResolver(bookSchema),
   });
 
   const handleAddOrUpdate = useCallback(
     async (data: BookFormData, closeDialog: () => void) => {
-      if (editingBook) {
-        await updateMutation.mutateAsync({ id: editingBook.id, book: data });
-        setEditingBook(null);
+      const editingBookId = formMethods.getValues("id");
+      if (editingBookId) {
+        await updateMutation.mutateAsync({ id: editingBookId, book: data });
       } else {
         const newBook: Book = { ...data, id: Date.now() };
         await addMutation.mutateAsync(newBook);
       }
+      formMethods.reset({ title: "", author: "", year: 0, genre: "", id: undefined });
       closeDialog();
     },
-    [editingBook, updateMutation, addMutation]
+    [updateMutation, addMutation, formMethods]
   );
 
   const { openDialog, closeDialog, content } = useDialog({
     onOpen: () => {
-      setEditingBook(null);
-      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
+      formMethods.reset({ title: "", author: "", year: 0, genre: "", id: undefined });
     },
     onClose: () => {
-      setEditingBook(null);
-      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
+      formMethods.reset({ title: "", author: "", year: 0, genre: "", id: undefined });
     },
-    title: editingBook ? "Edit Book" : "Add Book",
+    title: formMethods.getValues("id") ? "Edit Book" : "Add Book",
     children: (
       <BookForm
         onSubmit={(data) => handleAddOrUpdate(data, closeDialog)}
         formMethods={formMethods}
-        editingBook={editingBook}
       />
     ),
   });
 
   const handleEdit = useCallback(
     (book: Book) => {
-      setEditingBook(book);
       formMethods.reset({
+        id: book.id,
         title: book.title,
         author: book.author,
         year: book.year,
@@ -108,7 +105,7 @@ const BookManagement: React.FC = () => {
       });
       openDialog();
     },
-    [formMethods, setEditingBook, openDialog]
+    [formMethods, openDialog]
   );
 
   const handleDelete = useCallback(

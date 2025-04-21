@@ -1,63 +1,54 @@
 import { UseFormReturn } from "react-hook-form";
-import { Button, Box } from "@mui/material";
-import { Book } from "../api/mockApi";
+import { TextField, Button } from "@mui/material";
 import { BookFormData } from "../types/formTypes";
-import TextInputField from "./TextInputField";
 
-type BookFormProps = {
+interface BookFormProps {
   onSubmit: (data: BookFormData) => void;
   formMethods: UseFormReturn<BookFormData>;
-  editingBook: Book | null;
-};
+}
 
-const BookForm: React.FC<BookFormProps> = ({ onSubmit, formMethods, editingBook }) => {
-  const { handleSubmit } = formMethods;
+const BookForm: React.FC<BookFormProps> = ({ onSubmit, formMethods }) => {
+  const { register, handleSubmit, formState: { errors } } = formMethods;
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)}
-      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-    >
-      <TextInputField<BookFormData>
-        name="title"
-        control={formMethods.control}
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <TextField
         label="Title"
+        {...register("title")}
+        error={!!errors.title}
+        helperText={errors.title?.message || ""}
+        fullWidth
+        margin="normal"
       />
-      <TextInputField<BookFormData>
-        name="author"
-        control={formMethods.control}
+      <TextField
         label="Author"
+        {...register("author")}
+        error={!!errors.author}
+        helperText={errors.author?.message || ""}
+        fullWidth
+        margin="normal"
       />
-      <TextInputField<BookFormData>
-        name="year"
-        control={formMethods.control}
+      <TextField
         label="Year"
         type="number"
-        onCustomChange={(value) => parseInt(value, 10)}
+        {...register("year", { valueAsNumber: true })}
+        error={!!errors.year}
+        helperText={errors.year?.message || ""}
+        fullWidth
+        margin="normal"
       />
-      <TextInputField<BookFormData>
-        name="genre"
-        control={formMethods.control}
+      <TextField
         label="Genre"
+        {...register("genre")}
+        error={!!errors.genre}
+        helperText={errors.genre?.message || ""}
+        fullWidth
+        margin="normal"
       />
-      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ flex: 1, py: 1.2 }}
-        >
-          {editingBook ? "Update" : "Add"}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => formMethods.reset()}
-          sx={{ flex: 1, py: 1.2 }}
-        >
-          Reset
-        </Button>
-      </Box>
-    </Box>
+      <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+        Submit
+      </Button>
+    </form>
   );
 };
 
