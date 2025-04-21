@@ -1,21 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getBooks, addBook, updateBook, deleteBook, getStatistics } from "../api/mockApi";
 import BookForm from "../components/BookForm";
-import { Button, Typography, Paper, Chip, CircularProgress, Box } from "@mui/material";
+import { Button, Typography, Paper, Chip } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { Book } from "../api/mockApi";
 import { bookSchema } from "../validation/bookSchema";
 import { BookFormData } from "../types/formTypes";
 import CustomDialog from "../components/CustomDialog";
 import CustomTable from "../components/CustomTable";
+import { useDialog } from "../hooks/useDialog";
 
 const BookManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [editingBook, setEditingBook] = useState<Book | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
   const { user } = useAuth();
 
   const { data: books = [], isLoading } = useQuery<Book[]>({
@@ -54,87 +54,92 @@ const BookManagement: React.FC = () => {
   });
 
   const formMethods = useForm<BookFormData>({
-    defaultValues: editingBook
-      ? { title: editingBook.title, author: editingBook.author, year: editingBook.year, genre: editingBook.genre }
-      : { title: "", author: "", year: 0, genre: "" },
+    defaultValues: { title: "", author: "", year: 0, genre: "" },
     resolver: yupResolver(bookSchema),
   });
 
-  const handleAddOrUpdate = async (data: BookFormData) => {
-    if (editingBook) {
-      await updateMutation.mutateAsync({ id: editingBook.id, book: data });
+  const { isOpen, openDialog, closeDialog } = useDialog({
+    onOpen: () => {
       setEditingBook(null);
-    } else {
-      const newBook: Book = { ...data, id: Date.now() };
-      await addMutation.mutateAsync(newBook);
-    }
-    formMethods.reset();
-    setOpenDialog(false);
-  };
-
-  const handleEdit = (book: Book) => {
-    setEditingBook(book);
-    formMethods.reset({
-      title: book.title,
-      author: book.author,
-      year: book.year,
-      genre: book.genre,
-    });
-    setOpenDialog(true);
-  };
-
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
-  };
-
-  const handleOpenDialog = () => {
-    setEditingBook(null);
-    formMethods.reset();
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setEditingBook(null);
-    formMethods.reset();
-    setOpenDialog(false);
-  };
-
-  const columns = [
-    { label: "Title", key: "title" },
-    { label: "Author", key: "author" },
-    { label: "Year", key: "year" },
-    {
-      label: "Genre",
-      key: "genre",
-      render: (row: Book) => <Chip label={row.genre} color="primary" size="small" />,
+      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
     },
-    ...(user?.role === "admin"
-      ? [
-          {
-            label: "Actions",
-            key: "actions",
-            render: (row: Book) => (
-              <>
-                <Button
-                  variant="outlined"
-                  onClick={() => handleEdit(row)}
-                  sx={{ mr: 1 }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => handleDelete(row.id)}
-                >
-                  Delete
-                </Button>
-              </>
-            ),
-          },
-        ]
-      : []),
-  ];
+    onClose: () => {
+      setEditingBook(null);
+      formMethods.reset({ title: "", author: "", year: 0, genre: "" });
+    },
+  });
+
+  const handleAddOrUpdate = useCallback(
+    async (data: BookFormData) => {
+      if (editingBook) {
+        await updateMutation.mutateAsync({ id: editingBook.id, book: data });
+        setEditingBook(null);
+      } else {
+        const newBook: Book = { ...data, id: Date.now() };
+        await addMutation.mutateAsync(newBook);
+      }
+      closeDialog();
+    },
+    [editingBook, updateMutation, addMutation, closeDialog]
+  );
+
+  const handleEdit = useCallback(
+    (book: Book) => {
+      setEditingBook(book);
+      formMethods.reset({
+        title: book.title,
+        author: book.author,
+        year: book.year,
+        genre: book.genre,
+      });
+      openDialog();
+    },
+    [formMethods, setEditingBook, openDialog]
+  );
+
+  const handleDelete = useCallback(
+    (id: number) => {
+      deleteMutation.mutate(id);
+    },
+    [deleteMutation]
+  );
+
+  const renderGenre = useCallback((row: Book) => {
+    return <Chip label={row.genre} color="primary" size="small" />;
+  }, []);
+
+  const renderActions = useCallback(
+    (row: Book) => {
+      return (
+        <>
+          <Button variant="outlined" onClick={() => handleEdit(row)} sx={{ mr: 1 }}>
+            Edit
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => handleDelete(row.id)}
+          >
+            Delete
+          </Button>
+        </>
+      );
+    },
+    [handleEdit, handleDelete]
+  );
+
+  const columns = useMemo(
+    () => [
+      { label: "Title", key: "title" },
+      { label: "Author", key: "author" },
+      { label: "Year", key: "year" },
+      { label: "Genre", key: "genre", render: renderGenre },
+      ...(user?.role === "admin"
+        ? [{ label: "Actions", key: "actions", render: renderActions }]
+        : []),
+    ],
+    [user?.role, renderGenre, renderActions]
+  );
 
   return (
     <Paper sx={{ mt: 4, p: 3 }}>
@@ -149,15 +154,15 @@ const BookManagement: React.FC = () => {
       {user?.role === "admin" && (
         <Button
           variant="contained"
-          onClick={handleOpenDialog}
+          onClick={openDialog}
           sx={{ mb: 3, py: 1.2, px: 3 }}
         >
           Add Book
         </Button>
       )}
       <CustomDialog
-        open={openDialog}
-        onClose={handleCloseDialog}
+        open={isOpen}
+        onClose={closeDialog}
         title={editingBook ? "Edit Book" : "Add Book"}
       >
         <BookForm
@@ -166,13 +171,7 @@ const BookManagement: React.FC = () => {
           editingBook={editingBook}
         />
       </CustomDialog>
-      {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <CustomTable columns={columns} data={books} />
-      )}
+      <CustomTable columns={columns} data={books} isLoading={isLoading} />
     </Paper>
   );
 };
