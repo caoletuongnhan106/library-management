@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getReaders, addReader, updateReader, deleteReader } from "../api/mockApi";
@@ -11,14 +11,14 @@ import { readerSchema } from "../validation/readerSchema";
 import { ReaderFormData } from "../types/formTypes";
 import CustomDialog from "../components/CustomDialog";
 import CustomTable from "../components/CustomTable";
+import { useDialog } from "../hooks/useDialog";
 
 const ReaderManagement: React.FC = () => {
   const queryClient = useQueryClient();
   const [editingReader, setEditingReader] = useState<Reader | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
   const { user } = useAuth();
 
-  const { data: readers = [] } = useQuery<Reader[]>({
+  const { data: readers = [], isLoading } = useQuery<Reader[]>({
     queryKey: ["readers"],
     queryFn: getReaders,
   });
@@ -46,81 +46,86 @@ const ReaderManagement: React.FC = () => {
   });
 
   const formMethods = useForm<ReaderFormData>({
-    defaultValues: editingReader
-      ? { name: editingReader.name, email: editingReader.email, phone: editingReader.phone }
-      : { name: "", email: "", phone: "" },
+    defaultValues: { name: "", email: "", phone: "" },
     resolver: yupResolver(readerSchema),
   });
 
-  const handleAddOrUpdate = async (data: ReaderFormData) => {
-    if (editingReader) {
-      await updateMutation.mutateAsync({ id: editingReader.id, reader: data });
+  const { isOpen, openDialog, closeDialog } = useDialog({
+    onOpen: () => {
       setEditingReader(null);
-    } else {
-      const newReader: Reader = { ...data, id: Date.now() };
-      await addMutation.mutateAsync(newReader);
-    }
-    formMethods.reset();
-    setOpenDialog(false);
-  };
+      formMethods.reset({ name: "", email: "", phone: "" });
+    },
+    onClose: () => {
+      setEditingReader(null);
+      formMethods.reset({ name: "", email: "", phone: "" });
+    },
+  });
 
-  const handleEdit = (reader: Reader) => {
-    setEditingReader(reader);
-    formMethods.reset({
-      name: reader.name,
-      email: reader.email,
-      phone: reader.phone,
-    });
-    setOpenDialog(true);
-  };
+  const handleAddOrUpdate = useCallback(
+    async (data: ReaderFormData) => {
+      if (editingReader) {
+        await updateMutation.mutateAsync({ id: editingReader.id, reader: data });
+        setEditingReader(null);
+      } else {
+        const newReader: Reader = { ...data, id: Date.now() };
+        await addMutation.mutateAsync(newReader);
+      }
+      closeDialog();
+    },
+    [editingReader, updateMutation, addMutation, closeDialog]
+  );
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
-  };
+  const handleEdit = useCallback(
+    (reader: Reader) => {
+      setEditingReader(reader);
+      formMethods.reset({
+        name: reader.name,
+        email: reader.email,
+        phone: reader.phone,
+      });
+      openDialog();
+    },
+    [formMethods, setEditingReader, openDialog]
+  );
 
-  const handleOpenDialog = () => {
-    setEditingReader(null);
-    formMethods.reset();
-    setOpenDialog(true);
-  };
+  const handleDelete = useCallback(
+    (id: number) => {
+      deleteMutation.mutate(id);
+    },
+    [deleteMutation]
+  );
 
-  const handleCloseDialog = () => {
-    setEditingReader(null);
-    formMethods.reset();
-    setOpenDialog(false);
-  };
+  const renderActions = useCallback(
+    (row: Reader) => {
+      return (
+        <>
+          <Button variant="outlined" onClick={() => handleEdit(row)} sx={{ mr: 1 }}>
+            Edit
+          </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={() => handleDelete(row.id)}
+          >
+            Delete
+          </Button>
+        </>
+      );
+    },
+    [handleEdit, handleDelete]
+  );
 
-  const columns = [
-    { label: "Name", key: "name" },
-    { label: "Email", key: "email" },
-    { label: "Phone", key: "phone" },
-    ...(user?.role === "admin"
-      ? [
-          {
-            label: "Actions",
-            key: "actions",
-            render: (row: Reader) => (
-              <>
-                <Button
-                  variant="outlined"
-                  onClick={() => handleEdit(row)}
-                  sx={{ mr: 1 }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="secondary"
-                  onClick={() => handleDelete(row.id)}
-                >
-                  Delete
-                </Button>
-              </>
-            ),
-          },
-        ]
-      : []),
-  ];
+  const columns = useMemo(
+    () => [
+      { label: "Name", key: "name" },
+      { label: "Email", key: "email" },
+      { label: "Phone", key: "phone" },
+      ...(user?.role === "admin"
+        ? [{ label: "Actions", key: "actions", render: renderActions }]
+        : []),
+    ],
+    [user?.role, renderActions]
+  );
 
   return (
     <Paper sx={{ mt: 4, p: 3 }}>
@@ -130,15 +135,15 @@ const ReaderManagement: React.FC = () => {
       {user?.role === "admin" && (
         <Button
           variant="contained"
-          onClick={handleOpenDialog}
+          onClick={openDialog}
           sx={{ mb: 3, py: 1.2, px: 3 }}
         >
           Add Reader
         </Button>
       )}
       <CustomDialog
-        open={openDialog}
-        onClose={handleCloseDialog}
+        open={isOpen}
+        onClose={closeDialog}
         title={editingReader ? "Edit Reader" : "Add Reader"}
       >
         <ReaderForm
@@ -147,7 +152,7 @@ const ReaderManagement: React.FC = () => {
           editingReader={editingReader}
         />
       </CustomDialog>
-      <CustomTable columns={columns} data={readers} />
+      <CustomTable columns={columns} data={readers} isLoading={isLoading} />
     </Paper>
   );
 };
