@@ -1,4 +1,14 @@
-import { Book, Reader } from "../api/mockApi";
-
-export type BookFormData = Required<Omit<Book, "id">>;
-export type ReaderFormData = Required<Omit<Reader, "id">>;
+export interface BookFormData {
+    id?: number;
+    title: string;
+    author: string;
+    year: number;
+    genre: string;
+  }
+  
+  export interface ReaderFormData {
+    id?: number;
+    name: string;
+    email: string;
+    phone: string;
+  }

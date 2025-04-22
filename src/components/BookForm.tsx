@@ -1,63 +1,55 @@
 import { UseFormReturn } from "react-hook-form";
-import { Button, Box } from "@mui/material";
-import { Book } from "../api/mockApi";
+import { Button } from "@mui/material";
 import { BookFormData } from "../types/formTypes";
 import TextInputField from "./TextInputField";
 
-type BookFormProps = {
+interface BookFormProps {
   onSubmit: (data: BookFormData) => void;
   formMethods: UseFormReturn<BookFormData>;
-  editingBook: Book | null;
-};
+}
 
-const BookForm: React.FC<BookFormProps> = ({ onSubmit, formMethods, editingBook }) => {
+const BookForm: React.FC<BookFormProps> = ({ onSubmit, formMethods }) => {
   const { handleSubmit } = formMethods;
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)}
-      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)}>
       <TextInputField<BookFormData>
         name="title"
-        control={formMethods.control}
         label="Title"
+        formMethods={formMethods}
+        placeholder="Enter book title"
+        required
+        variant="filled"
       />
       <TextInputField<BookFormData>
         name="author"
-        control={formMethods.control}
         label="Author"
+        formMethods={formMethods}
+        placeholder="Enter author name"
+        required
+        variant="filled"
       />
       <TextInputField<BookFormData>
         name="year"
-        control={formMethods.control}
         label="Year"
         type="number"
-        onCustomChange={(value) => parseInt(value, 10)}
+        formMethods={formMethods}
+        placeholder="Enter publication year"
+        required
+        variant="filled"
       />
       <TextInputField<BookFormData>
         name="genre"
-        control={formMethods.control}
         label="Genre"
+        formMethods={formMethods}
+        placeholder="Enter book genre"
+        required
+        variant="filled"
       />
-      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ flex: 1, py: 1.2 }}
-        >
-          {editingBook ? "Update" : "Add"}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => formMethods.reset()}
-          sx={{ flex: 1, py: 1.2 }}
-        >
-          Reset
-        </Button>
-      </Box>
-    </Box>
+      <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+        Submit
+      </Button>
+    </form>
   );
 };
 

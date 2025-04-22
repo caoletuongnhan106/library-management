@@ -1,51 +1,44 @@
-import { Controller, Control, FieldValues, Path } from "react-hook-form";
 import { TextField, TextFieldProps } from "@mui/material";
+import { UseFormReturn, Path } from "react-hook-form";
+import { FieldValues } from "react-hook-form";
 
-type TextInputFieldProps<T extends FieldValues> = {
+interface TextInputFieldProps<T extends FieldValues> extends Omit<TextFieldProps, "name" | "label"> {
   name: Path<T>;
-  control: Control<T>;
   label: string;
-  type?: string;
-  onCustomChange?: (value: any) => any;
-} & Omit<TextFieldProps, "name" | "label" | "type">;
+  formMethods: UseFormReturn<T>;
+}
 
 const TextInputField = <T extends FieldValues>({
   name,
-  control,
   label,
+  formMethods,
   type = "text",
-  onCustomChange,
-  ...textFieldProps
+  placeholder,
+  variant = "outlined",
+  size = "medium",
+  disabled = false,
+  required = false,
+  fullWidth = true,
+  margin = "normal",
+  ...props
 }: TextInputFieldProps<T>) => {
+  const { register, formState: { errors } } = formMethods;
+
   return (
-    <Controller
-      name={name}
-      control={control}
-      render={({ field, fieldState: { error } }) => (
-        <TextField
-          {...field}
-          label={label}
-          type={type}
-          error={!!error}
-          helperText={error?.message}
-          fullWidth
-          variant="outlined"
-          onChange={(e) => {
-            const value = e.target.value;
-            const transformedValue = onCustomChange ? onCustomChange(value) : value;
-            field.onChange(transformedValue);
-          }}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "8px",
-              "&:hover fieldset": {
-                borderColor: "#1976d2",
-              },
-            },
-          }}
-          {...textFieldProps}
-        />
-      )}
+    <TextField
+      label={label}
+      type={type}
+      placeholder={placeholder}
+      variant={variant}
+      size={size}
+      disabled={disabled}
+      required={required}
+      fullWidth={fullWidth}
+      margin={margin}
+      {...register(name, { valueAsNumber: type === "number" })}
+      error={!!errors[name]}
+      helperText={(errors[name]?.message as string) || ""}
+      {...props}
     />
   );
 };
