@@ -1,60 +1,46 @@
 import { UseFormReturn } from "react-hook-form";
-import { Button, Box } from "@mui/material";
-import { Reader } from "../api/mockApi";
+import { Button } from "@mui/material";
 import { ReaderFormData } from "../types/formTypes";
 import TextInputField from "./TextInputField";
 
-type ReaderFormProps = {
+interface ReaderFormProps {
   onSubmit: (data: ReaderFormData) => void;
   formMethods: UseFormReturn<ReaderFormData>;
-  editingReader: Reader | null;
-};
+}
 
-const ReaderForm: React.FC<ReaderFormProps> = ({
-  onSubmit,
-  formMethods,
-  editingReader,
-}) => {
+const ReaderForm: React.FC<ReaderFormProps> = ({ onSubmit, formMethods }) => {
   const { handleSubmit } = formMethods;
 
   return (
-    <Box
-      component="form"
-      onSubmit={handleSubmit(onSubmit)}
-      sx={{ display: "flex", flexDirection: "column", gap: 2 }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)}>
       <TextInputField<ReaderFormData>
         name="name"
-        control={formMethods.control}
         label="Name"
+        formMethods={formMethods}
+        placeholder="Enter reader name"
+        required
+        variant="filled"
       />
       <TextInputField<ReaderFormData>
         name="email"
-        control={formMethods.control}
         label="Email"
+        formMethods={formMethods}
+        placeholder="Enter reader email"
+        required
+        variant="filled"
       />
       <TextInputField<ReaderFormData>
         name="phone"
-        control={formMethods.control}
         label="Phone"
+        formMethods={formMethods}
+        placeholder="Enter reader phone"
+        required
+        variant="filled"
       />
-      <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-        <Button
-          type="submit"
-          variant="contained"
-          sx={{ flex: 1, py: 1.2 }}
-        >
-          {editingReader ? "Update" : "Add"}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => formMethods.reset()}
-          sx={{ flex: 1, py: 1.2 }}
-        >
-          Reset
-        </Button>
-      </Box>
-    </Box>
+      <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+        Submit
+      </Button>
+    </form>
   );
 };
 

@@ -1,48 +1,38 @@
-import { useState, useCallback, JSX } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
-import { ReactNode } from "react";
+import { useState, useCallback, ReactNode } from "react";
 
 interface UseDialogProps {
-  onOpen?: () => void;
-  onClose?: () => void;
   title: string;
   children: ReactNode;
+  onOpen?: () => void;
+  onClose?: () => void;
 }
 
 interface UseDialogReturn {
+  open: boolean;
+  title: string;
+  children: ReactNode;
   openDialog: () => void;
   closeDialog: () => void;
-  content: JSX.Element;
 }
 
-export const useDialog = ({ onOpen, onClose, title, children }: UseDialogProps): UseDialogReturn => {
-  const [isOpen, setIsOpen] = useState(false);
+export const useDialog = ({ title, children, onOpen, onClose }: UseDialogProps): UseDialogReturn => {
+  const [open, setOpen] = useState(false);
 
   const openDialog = useCallback(() => {
-    setIsOpen(true);
+    setOpen(true);
     onOpen?.();
   }, [onOpen]);
 
   const closeDialog = useCallback(() => {
-    setIsOpen(false);
+    setOpen(false);
     onClose?.();
   }, [onClose]);
 
-  const handleDialogClose = useCallback((_event: object, reason: string) => {
-    if (reason !== "backdropClick") {
-      closeDialog();
-    }
-  }, [closeDialog]);
-
-  const dialogContent = (
-    <Dialog open={isOpen} onClose={handleDialogClose}>
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>{children}</DialogContent>
-      <DialogActions>
-        <Button onClick={closeDialog}>Cancel</Button>
-      </DialogActions>
-    </Dialog>
-  );
-
-  return { openDialog, closeDialog, content: dialogContent };
+  return {
+    open,
+    title,
+    children,
+    openDialog,
+    closeDialog,
+  };
 };

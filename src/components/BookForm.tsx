@@ -1,6 +1,7 @@
 import { UseFormReturn } from "react-hook-form";
-import { TextField, Button } from "@mui/material";
+import { Button } from "@mui/material";
 import { BookFormData } from "../types/formTypes";
+import TextInputField from "./TextInputField";
 
 interface BookFormProps {
   onSubmit: (data: BookFormData) => void;
@@ -8,42 +9,42 @@ interface BookFormProps {
 }
 
 const BookForm: React.FC<BookFormProps> = ({ onSubmit, formMethods }) => {
-  const { register, handleSubmit, formState: { errors } } = formMethods;
+  const { handleSubmit } = formMethods;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <TextField
+      <TextInputField<BookFormData>
+        name="title"
         label="Title"
-        {...register("title")}
-        error={!!errors.title}
-        helperText={errors.title?.message || ""}
-        fullWidth
-        margin="normal"
+        formMethods={formMethods}
+        placeholder="Enter book title"
+        required
+        variant="filled"
       />
-      <TextField
+      <TextInputField<BookFormData>
+        name="author"
         label="Author"
-        {...register("author")}
-        error={!!errors.author}
-        helperText={errors.author?.message || ""}
-        fullWidth
-        margin="normal"
+        formMethods={formMethods}
+        placeholder="Enter author name"
+        required
+        variant="filled"
       />
-      <TextField
+      <TextInputField<BookFormData>
+        name="year"
         label="Year"
         type="number"
-        {...register("year", { valueAsNumber: true })}
-        error={!!errors.year}
-        helperText={errors.year?.message || ""}
-        fullWidth
-        margin="normal"
+        formMethods={formMethods}
+        placeholder="Enter publication year"
+        required
+        variant="filled"
       />
-      <TextField
+      <TextInputField<BookFormData>
+        name="genre"
         label="Genre"
-        {...register("genre")}
-        error={!!errors.genre}
-        helperText={errors.genre?.message || ""}
-        fullWidth
-        margin="normal"
+        formMethods={formMethods}
+        placeholder="Enter book genre"
+        required
+        variant="filled"
       />
       <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
         Submit

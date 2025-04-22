@@ -4,6 +4,7 @@ import { useForm, UseFormReturn } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getBooks, addBook, updateBook, deleteBook, getStatistics } from "../api/mockApi";
 import BookForm from "../components/BookForm";
+import DialogCustom from "../components/DialogCustom";
 import { Button, Typography, Paper, Chip } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { Book } from "../api/mockApi";
@@ -78,7 +79,7 @@ const BookManagement: React.FC = () => {
     [updateMutation, addMutation, formMethods]
   );
 
-  const { openDialog, closeDialog, content } = useDialog({
+  const { open, title, children, openDialog, closeDialog } = useDialog({
     onOpen: () => {
       formMethods.reset({ title: "", author: "", year: 0, genre: "", id: undefined });
     },
@@ -162,7 +163,7 @@ const BookManagement: React.FC = () => {
           Statistics: {stats.totalBooks} books | Top Author: {stats.topAuthor} | Top Year: {stats.topYear}
         </Typography>
       )}
-      <RoleBasedRender role={user?.role}>
+      <RoleBasedRender allowRole={["admin"]}>
         <Button
           variant="contained"
           onClick={openDialog}
@@ -171,7 +172,13 @@ const BookManagement: React.FC = () => {
           Add Book
         </Button>
       </RoleBasedRender>
-      {content}
+      <DialogCustom
+        open={open}
+        title={title}
+        onClose={closeDialog}
+      >
+        {children}
+      </DialogCustom>
       <CustomTable columns={columns} data={books} isLoading={isBooksLoading} />
     </Paper>
   );

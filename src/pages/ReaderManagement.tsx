@@ -1,9 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useCallback, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useCallback, useMemo } from "react";
+import { useForm, UseFormReturn } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { getReaders, addReader, updateReader, deleteReader } from "../api/mockApi";
 import ReaderForm from "../components/ReaderForm";
+import DialogCustom from "../components/DialogCustom";
 import { Button, Typography, Paper } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { Reader } from "../api/mockApi";
@@ -15,7 +16,6 @@ import RoleBasedRender from "../components/RoleBasedRender";
 
 const ReaderManagement: React.FC = () => {
   const queryClient = useQueryClient();
-  const [editingReader, setEditingReader] = useState<Reader | null>(null);
   const { user } = useAuth();
 
   const { data: readers = [], isLoading: isReadersLoading } = useQuery<Reader[]>({
@@ -39,61 +39,59 @@ const ReaderManagement: React.FC = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteReader(id),
+    mutationFn: deleteReader,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["readers"] });
     },
   });
 
-  const formMethods = useForm<ReaderFormData>({
-    defaultValues: { name: "", email: "", phone: "" },
+  const formMethods: UseFormReturn<ReaderFormData> = useForm<ReaderFormData>({
+    defaultValues: { name: "", email: "", phone: "", id: undefined },
     resolver: yupResolver(readerSchema),
   });
 
   const handleAddOrUpdate = useCallback(
     async (data: ReaderFormData, closeDialog: () => void) => {
-      if (editingReader) {
-        await updateMutation.mutateAsync({ id: editingReader.id, reader: data });
-        setEditingReader(null);
+      const editingReaderId = formMethods.getValues("id");
+      if (editingReaderId) {
+        await updateMutation.mutateAsync({ id: editingReaderId, reader: data });
       } else {
         const newReader: Reader = { ...data, id: Date.now() };
         await addMutation.mutateAsync(newReader);
       }
+      formMethods.reset({ name: "", email: "", phone: "", id: undefined });
       closeDialog();
     },
-    [editingReader, updateMutation, addMutation]
+    [updateMutation, addMutation, formMethods]
   );
 
-  const { openDialog, closeDialog, content } = useDialog({
+  const { open, title, children, openDialog, closeDialog } = useDialog({
     onOpen: () => {
-      setEditingReader(null);
-      formMethods.reset({ name: "", email: "", phone: "" });
+      formMethods.reset({ name: "", email: "", phone: "", id: undefined });
     },
     onClose: () => {
-      setEditingReader(null);
-      formMethods.reset({ name: "", email: "", phone: "" });
+      formMethods.reset({ name: "", email: "", phone: "", id: undefined });
     },
-    title: editingReader ? "Edit Reader" : "Add Reader",
+    title: formMethods.getValues("id") ? "Edit Reader" : "Add Reader",
     children: (
       <ReaderForm
         onSubmit={(data) => handleAddOrUpdate(data, closeDialog)}
         formMethods={formMethods}
-        editingReader={editingReader}
       />
     ),
   });
 
   const handleEdit = useCallback(
     (reader: Reader) => {
-      setEditingReader(reader);
       formMethods.reset({
+        id: reader.id,
         name: reader.name,
         email: reader.email,
         phone: reader.phone,
       });
       openDialog();
     },
-    [formMethods, setEditingReader, openDialog]
+    [formMethods, openDialog]
   );
 
   const handleDelete = useCallback(
@@ -103,25 +101,22 @@ const ReaderManagement: React.FC = () => {
     [deleteMutation]
   );
 
-  const renderActions = useCallback(
-    (row: Reader) => {
-      return (
-        <>
-          <Button variant="outlined" onClick={() => handleEdit(row)} sx={{ mr: 1 }}>
-            Edit
-          </Button>
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={() => handleDelete(row.id)}
-          >
-            Delete
-          </Button>
-        </>
-      );
-    },
-    [handleEdit, handleDelete]
-  );
+  const renderActions = (row: Reader) => {
+    return (
+      <>
+        <Button variant="outlined" onClick={() => handleEdit(row)} sx={{ mr: 1 }}>
+          Edit
+        </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          onClick={() => handleDelete(row.id)}
+        >
+          Delete
+        </Button>
+      </>
+    );
+  };
 
   const columns = useMemo(
     () => [
@@ -132,7 +127,7 @@ const ReaderManagement: React.FC = () => {
         ? [{ label: "Actions", key: "actions", render: renderActions }]
         : []),
     ],
-    [user?.role, renderActions]
+    [user?.role, handleEdit, handleDelete] // Dependencies updated to include handleEdit and handleDelete
   );
 
   return (
@@ -140,7 +135,7 @@ const ReaderManagement: React.FC = () => {
       <Typography variant="h5" gutterBottom>
         Reader Management
       </Typography>
-      <RoleBasedRender role={user?.role}>
+      <RoleBasedRender allowRole={["admin"]}>
         <Button
           variant="contained"
           onClick={openDialog}
@@ -149,7 +144,13 @@ const ReaderManagement: React.FC = () => {
           Add Reader
         </Button>
       </RoleBasedRender>
-      {content}
+      <DialogCustom
+        open={open}
+        title={title}
+        onClose={closeDialog}
+      >
+        {children}
+      </DialogCustom>
       <CustomTable columns={columns} data={readers} isLoading={isReadersLoading} />
     </Paper>
   );
